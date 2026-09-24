@@ -32,10 +32,13 @@ Codex turn, then request `$image-to-editable-pptx` with the source image.
 - Tesseract is optional for ambiguous text. A PDF rasterizer is needed when the
   input is a PDF rather than an already rendered page image.
 
-The OpenAI **Presentations** skill is a separate official plugin capability.
-This repository includes the reconstruction instructions it needs, rather than
-copying that plugin's files. The compiler still needs its Artifact Tool runtime.
-If that runtime is unavailable, preflight stops with a dependency message.
+The OpenAI **Presentations** skill is separate. Its `SKILL.md` is neither copied
+nor invoked by this repository, and installing that instruction file alone does
+not supply `@oai/artifact-tool`. This repository has its own reconstruction
+instructions but still needs the runtime package to compile a PPTX. Run
+preflight before conversion; `missing_tool:artifact_tool` means the compiler
+cannot run in the current environment. The workflow must stop instead of
+claiming a successful conversion.
 
 ## Workflow
 

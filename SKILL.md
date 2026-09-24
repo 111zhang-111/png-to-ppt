@@ -12,19 +12,20 @@ complete QA traces back into context.
 
 ## Runtime and Authoring
 
-This skill contains its own reconstruction and QA workflow. The OpenAI
-`Presentations` skill can provide additional general slide guidance when it is
-installed, but it is not part of this repository and is not needed as an
-instructional companion.
+This repository contains the reconstruction and QA instructions needed for this
+workflow. It does not contain, import, or require the separate OpenAI
+`Presentations` skill. Follow the source image rather than unrelated slide
+design defaults.
 
-The supplied compiler uses `@oai/artifact-tool`, which must be available in
-the local Codex presentation runtime; the package is not bundled here. Locate
-its `node_modules` with the workspace dependency loader when available and set
-`CODEX_PRIMARY_RUNTIME_NODE_MODULES` or `RUNTIME_NODE_MODULES`. Set
-`RUNTIME_NODE` to the bundled Node executable if `node` is not on `PATH`. Run
-`scripts/preflight.py` before authoring and stop with its missing-dependency
-message when the runtime is unavailable. Do not use `python-pptx` as a silent
-fallback.
+The supplied compiler uses `@oai/artifact-tool`. That runtime package is not
+bundled here and is distinct from a `SKILL.md` instruction file. Locate an
+installed package with the workspace dependency loader when available and set
+`CODEX_PRIMARY_RUNTIME_NODE_MODULES` or `RUNTIME_NODE_MODULES` to its
+`node_modules` directory. Set `RUNTIME_NODE` to the bundled Node executable if
+`node` is not on `PATH`. Run `scripts/preflight.py` before authoring. If it
+reports `missing_tool:artifact_tool`, stop and explain that compilation is
+unavailable in this environment. Do not claim a PPTX was produced or silently
+switch to another compiler.
 
 Match the source slide dimensions, composition, typography, and content. Use
 CSS pixel coordinates at 96 DPI in the scene; one point equals 4/3 CSS pixels.

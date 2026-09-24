@@ -45,9 +45,10 @@ def initialize_artifact_workspace(run_dir: Path, env: dict[str, str]) -> None:
     )
     if source is None:
         raise RuntimeError(
-            "@oai/artifact-tool is unavailable. Install the OpenAI Presentations "
-            "capability in Codex and set CODEX_PRIMARY_RUNTIME_NODE_MODULES or "
-            "RUNTIME_NODE_MODULES to its node_modules directory."
+            "@oai/artifact-tool is unavailable. Locate an installed OpenAI "
+            "presentation runtime package and set CODEX_PRIMARY_RUNTIME_NODE_MODULES "
+            "or RUNTIME_NODE_MODULES to its node_modules directory. The separate "
+            "Presentations SKILL.md does not provide this package."
         )
 
     package_json = run_dir / "package.json"
