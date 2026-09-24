@@ -1,0 +1,14 @@
+interface:
+  display_name: Image to Editable PPTX
+  short_description: "\u4EE5\u4F4E token \u6D41\u7A0B\u9AD8\u4FDD\u771F\u91CD\u5EFA\
+    \u539F\u751F\u53EF\u7F16\u8F91 PowerPoint"
+  default_prompt: Use $image-to-editable-pptx in economy mode to reconstruct this
+    slide image as an editable PowerPoint. I can switch to standard or strict mode
+    in the conversation.
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
