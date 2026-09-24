@@ -191,6 +191,33 @@ Supported types:
 The compiler orders layers as baseboard, structure, visual asset, native text,
 and decoration; then uses `z` within each layer.
 
+## Lines and Arrow Ends
+
+Use one `native_line` element for each straight line, including a line with an
+arrow. Its `bbox` is `[start_x, start_y, delta_x, delta_y]`, so the visible end
+is `(start_x + delta_x, start_y + delta_y)`. Set `head: "triangle"` for an
+arrowhead at that end, or `tail: "triangle"` for one at the start. The PPTX
+compiler attaches these to the same native line object.
+
+```json
+{
+  "id": "flow-arrow",
+  "type": "native_line",
+  "layer": "structure",
+  "bbox": [300, 220, 120, 0],
+  "z": 10,
+  "source_ids": ["s-flow-arrow"],
+  "editability": "native",
+  "line": {"color": "#16345C", "dash": "solid"},
+  "head": "triangle"
+}
+```
+
+All `native_line` elements and unfilled `native_path` strokes default to 1 pt.
+Only when the user specifies a different width, set `line.width_pt` to that
+point value. Do not use `line.width` to represent a semantic line's final
+width; it is normalized by the compiler.
+
 ## Baseboard Root
 
 Every slide must contain exactly one element with:

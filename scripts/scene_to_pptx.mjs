@@ -17,6 +17,14 @@ const sceneDir = path.dirname(scenePath);
 const scene = JSON.parse(await fs.readFile(scenePath, "utf8"));
 const slideSize = scene.slide_size ?? { width: 1280, height: 720 };
 const presentation = Presentation.create({ slideSize });
+const ONE_POINT_PX = 4 / 3;
+function semanticLineWidthPx(element) {
+  const points = Number(element.line?.width_pt ?? 1);
+  if (!Number.isFinite(points) || points <= 0) {
+    throw new Error(`Invalid line.width_pt on ${element.id}`);
+  }
+  return points * ONE_POINT_PX;
+}
 const layerOrder = {
   baseboard: 0,
   structure: 1,
@@ -100,28 +108,6 @@ function contentType(imagePath) {
   return "image/png";
 }
 
-function addArrowHead(slide, element) {
-  if (!element.head || element.head === "none") return;
-  const [x, y, w, h] = element.bbox;
-  const endX = x + w;
-  const endY = y + h;
-  const angle = (Math.atan2(h, w) * 180) / Math.PI + 90;
-  const size = element.head_size ?? Math.max(8, (element.line?.width ?? 2) * 4);
-  slide.shapes.add({
-    geometry: "triangle",
-    name: `${element.id}-head`,
-    position: {
-      left: endX - size / 2,
-      top: endY - size / 2,
-      width: size,
-      height: size,
-      rotation: angle,
-    },
-    fill: element.line?.color ?? "#111111",
-    line: { style: "solid", fill: "none", width: 0 },
-  });
-}
-
 async function addElement(slide, element) {
   const pos = positionOf(element);
   if (element.type === "native_text") {
@@ -181,19 +167,13 @@ async function addElement(slide, element) {
     const top = Math.min(y, y + h);
     const width = Math.max(1, Math.abs(w));
     const height = Math.max(1, Math.abs(h));
-    const commands =
-      w * h >= 0
-        ? [{ moveTo: { x: 0, y: 0 } }, { lineTo: { x: width, y: height } }]
-        : [{ moveTo: { x: 0, y: height } }, { lineTo: { x: width, y: 0 } }];
     slide.shapes.add({
-      geometry: "custom",
+      geometry: "line",
       name: element.id,
-      position: { left, top, width, height },
+      position: { left, top, width, height, horizontalFlip: w < 0, verticalFlip: h < 0 },
       fill: "none",
-      line: lineConfig(element.line),
-      customPaths: [{ width, height, commands }],
+      line: lineConfig({ ...element.line, width: semanticLineWidthPx(element) }),
     });
-    addArrowHead(slide, element);
     return;
   }
 
@@ -210,7 +190,11 @@ async function addElement(slide, element) {
       name: element.id,
       position: pos,
       fill: element.fill ?? "none",
-      line: lineConfig(element.line),
+      line: lineConfig(
+        element.fill && element.fill !== "none"
+          ? element.line
+          : { ...element.line, width: semanticLineWidthPx(element) },
+      ),
       customPaths: [{ width: pathWidth, height: pathHeight, commands }],
     });
     return;

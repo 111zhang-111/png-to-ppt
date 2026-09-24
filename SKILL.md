@@ -10,10 +10,26 @@ Artifact Tool compilation, and script-first QA. Default to economy mode and
 preserve visual fidelity without feeding raw OCR, full inspection logs, or
 complete QA traces back into context.
 
-## Required Companion
+## Runtime and Authoring
 
-Read and follow the built-in `Presentations` skill. Use
-`@oai/artifact-tool`; never use `python-pptx`.
+This skill contains its own reconstruction and QA workflow. The OpenAI
+`Presentations` skill can provide additional general slide guidance when it is
+installed, but it is not part of this repository and is not needed as an
+instructional companion.
+
+The supplied compiler uses `@oai/artifact-tool`, which must be available in
+the local Codex presentation runtime; the package is not bundled here. Locate
+its `node_modules` with the workspace dependency loader when available and set
+`CODEX_PRIMARY_RUNTIME_NODE_MODULES` or `RUNTIME_NODE_MODULES`. Set
+`RUNTIME_NODE` to the bundled Node executable if `node` is not on `PATH`. Run
+`scripts/preflight.py` before authoring and stop with its missing-dependency
+message when the runtime is unavailable. Do not use `python-pptx` as a silent
+fallback.
+
+Match the source slide dimensions, composition, typography, and content. Use
+CSS pixel coordinates at 96 DPI in the scene; one point equals 4/3 CSS pixels.
+Choose installed fonts explicitly, keep all readable labels as native text,
+and inspect a final render for wrapping, clipping, and broken connectors.
 
 Read these references:
 
@@ -85,8 +101,9 @@ starting a reconstruction when it is not already obvious.
 
 - Set every reconstructed line and connector, including arrowed lines and
   `native_path` elements used only as strokes, to a fixed 1 pt width unless
-  the current user explicitly requests another width. Do not infer stroke
-  width from source-image pixels or slide scaling.
+  the current user explicitly requests another width. Record an explicit
+  override as `line.width_pt`; do not infer stroke width from source-image
+  pixels or slide scaling.
 - A straight line with an arrowhead must be **one native PowerPoint line or
   connector object with an end-arrow setting**. Never draw the shaft and
   arrowhead as separate objects, even if they are grouped; grouping does not
@@ -94,11 +111,9 @@ starting a reconstruction when it is not already obvious.
 - Keep the arrowhead attached to the actual line endpoint. Check the final
   PowerPoint render for gaps, breaks, or an arrowhead pointing away from the
   connected line. When segments form a route, make their endpoints meet exactly.
-- Treat compiler output as a draft when it creates a separate triangle for a
-  `native_line` arrow. Replace that pair in PowerPoint or in the PPTX package
-  with one line carrying the arrowhead before delivery. In DrawingML, a 1 pt
-  line has `<a:ln w="12700">`; its arrow end belongs inside that same line's
-  properties (`a:headEnd` or `a:tailEnd`, according to direction).
+- The pipeline writes arrowheads into each line's DrawingML properties and
+  fixes the default stroke to `<a:ln w="12700">` (1 pt). Run the structural
+  audit on the delivered PPTX and correct any failed arrow or width check.
 - Inspect the delivered PPTX, not just the scene JSON: no detached arrowhead
   shape may remain for a straight arrow line, and each reconstructed line or
   connector must retain its 1 pt stroke after grouping or resizing.
@@ -144,12 +159,13 @@ unfiltered logs into context.
 
 ```bash
 python scripts/preflight.py INPUT... \
-  --json-out RUN_DIR/preflight.json \
-  --fontconfig-file FONTCONFIG_FILE
+  --json-out RUN_DIR/preflight.json
 ```
 
-Stop when the input, Artifact Tool, renderer, or required fonts are unavailable.
-A missing OCR language is not a blocker when the text is visually reviewable.
+Add `--east-asian-font FAMILY` when the slide contains CJK text and
+`--fontconfig-file PATH` when using a task-local font configuration. Stop when
+the input, Artifact Tool, or a required font is unavailable. A missing OCR
+language is not a blocker when the text is visually reviewable.
 
 ### 2. Inventory Once
 
@@ -209,12 +225,13 @@ python scripts/pipeline.py \
   --scene RUN_DIR/scene.json \
   --output RUN_DIR/reconstruction.pptx \
   --run-dir RUN_DIR/pipeline \
-  --mode economy \
-  --fontconfig-file FONTCONFIG_FILE
+  --mode economy
 ```
 
 Pass the resolved conversational mode to `--mode`. Use `--crop-failures` in
-`standard` or `strict` when targeted crop review is useful.
+`standard` or `strict` when targeted crop review is useful. Add
+`--fontconfig-file PATH` when needed. The pipeline integrates each straight
+arrowhead into its native line and enforces 1 pt semantic strokes by default.
 
 The pipeline writes:
 

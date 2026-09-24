@@ -335,10 +335,27 @@ def lint(scene_path: Path) -> dict:
                 left, top, box_width, box_height = bbox
                 if etype != "native_line" and (box_width <= 0 or box_height <= 0):
                     issue(errors, "non_positive_bbox", "width and height must be positive", slide=sid, element=eid)
+                if etype == "native_line" and box_width == 0 and box_height == 0:
+                    issue(errors, "zero_length_line", "native_line needs a nonzero delta", slide=sid, element=eid)
                 right = left + box_width
                 bottom = top + box_height
                 if min(left, right) < -1 or min(top, bottom) < -1 or max(left, right) > width + 1 or max(top, bottom) > height + 1:
                     issue(warnings, "bbox_outside_canvas", "element exceeds slide canvas", slide=sid, element=eid)
+
+            stroke_only = etype == "native_line" or (
+                etype == "native_path" and element.get("fill", "none") == "none"
+            )
+            if stroke_only:
+                width_pt = (element.get("line") or {}).get("width_pt", 1)
+                if not isinstance(width_pt, (int, float)) or not math.isfinite(width_pt) or width_pt <= 0:
+                    issue(errors, "invalid_line_width_pt", "line.width_pt must be positive", slide=sid, element=eid)
+            if etype == "native_line":
+                for end_field in ("head", "tail"):
+                    end_value = element.get(end_field)
+                    if end_value is not None and end_value not in {
+                        "none", "triangle", "stealth", "diamond", "oval", "arrow"
+                    }:
+                        issue(errors, "invalid_line_end", f"{end_field}={end_value!r}", slide=sid, element=eid)
 
             source_ids = element.get("source_ids", [])
             if not isinstance(source_ids, list) or not source_ids:

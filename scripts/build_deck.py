@@ -13,7 +13,12 @@ from pathlib import Path
 
 from scene_defaults import write_expanded
 
-PRESENTATIONS_SKILL = Path("/root/.codex/skills/builtins/presentations")
+
+def node_executable(env: dict[str, str]) -> str:
+    selected = env.get("RUNTIME_NODE") or env.get("CODEX_PRIMARY_RUNTIME_NODE") or shutil.which("node")
+    if not selected:
+        raise RuntimeError("Node.js is unavailable; set RUNTIME_NODE to its executable path")
+    return selected
 
 
 def run(command: list[str], *, cwd: Path, env: dict[str, str]) -> None:
@@ -21,25 +26,29 @@ def run(command: list[str], *, cwd: Path, env: dict[str, str]) -> None:
 
 
 def initialize_artifact_workspace(run_dir: Path, env: dict[str, str]) -> None:
-    """Use the built-in initializer, with an equivalent runtime-link fallback."""
-    setup = PRESENTATIONS_SKILL / "container_tools/setup_artifact_tool_workspace.mjs"
-    proc = subprocess.run(
-        [shutil.which("node") or "node", str(setup), "--workspace", str(run_dir)],
-        cwd=run_dir,
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
+    """Link an available Artifact Tool runtime without a platform-specific path."""
+    module_roots = [
+        Path(value).expanduser()
+        for key in ("CODEX_PRIMARY_RUNTIME_NODE_MODULES", "RUNTIME_NODE_MODULES")
+        if (value := env.get(key))
+    ]
+    module_roots.extend(
+        [Path(__file__).resolve().parent.parent / "node_modules", Path.cwd() / "node_modules"]
     )
-    if proc.returncode == 0:
-        return
-
-    runtime_modules = env.get("CODEX_PRIMARY_RUNTIME_NODE_MODULES")
-    if not runtime_modules:
-        raise RuntimeError("Artifact Tool workspace setup failed and runtime modules are unknown")
-    source = Path(runtime_modules) / "@oai" / "artifact-tool"
-    if not (source / "package.json").exists():
-        raise RuntimeError(f"Artifact Tool package is unavailable at {source}")
+    source = next(
+        (
+            root / "@oai" / "artifact-tool"
+            for root in module_roots
+            if (root / "@oai" / "artifact-tool" / "package.json").is_file()
+        ),
+        None,
+    )
+    if source is None:
+        raise RuntimeError(
+            "@oai/artifact-tool is unavailable. Install the OpenAI Presentations "
+            "capability in Codex and set CODEX_PRIMARY_RUNTIME_NODE_MODULES or "
+            "RUNTIME_NODE_MODULES to its node_modules directory."
+        )
 
     package_json = run_dir / "package.json"
     if not package_json.exists():
@@ -51,7 +60,11 @@ def initialize_artifact_workspace(run_dir: Path, env: dict[str, str]) -> None:
     target_parent.mkdir(parents=True, exist_ok=True)
     target = target_parent / "artifact-tool"
     if not target.exists():
-        target.symlink_to(source, target_is_directory=True)
+        try:
+            target.symlink_to(source, target_is_directory=True)
+        except OSError:
+            # Creating symlinks can require privileges on Windows.
+            shutil.copytree(source, target, dirs_exist_ok=True)
 
 
 def main() -> int:
@@ -98,7 +111,7 @@ def main() -> int:
     shutil.copy2(skill_dir / "scene_to_pptx.mjs", compiler)
     run(
         [
-            shutil.which("node") or "node",
+            node_executable(env),
             str(compiler),
             str(scene),
             str(output),
@@ -118,11 +131,24 @@ def main() -> int:
             "--latin",
             policy.get("latin", "Arial"),
             "--east-asian",
-            policy.get("east_asian", "Noto Sans CJK SC"),
+            policy.get("east_asian", policy.get("latin", "Arial")),
             "--complex-script",
             policy.get("complex_script", "Arial"),
             "--scene",
             str(scene),
+        ],
+        cwd=run_dir,
+        env=env,
+    )
+    run(
+        [
+            sys.executable,
+            str(skill_dir / "patch_pptx_lines.py"),
+            str(output),
+            "--scene",
+            str(scene),
+            "--stage",
+            args.stage,
         ],
         cwd=run_dir,
         env=env,

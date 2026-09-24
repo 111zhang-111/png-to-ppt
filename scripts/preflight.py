@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageFile
@@ -17,7 +18,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 def command_version(command: str, args: list[str]) -> dict:
-    path = shutil.which(command)
+    path = command if Path(command).is_file() else shutil.which(command)
     result = {"command": command, "path": path, "available": bool(path)}
     if not path:
         return result
@@ -94,7 +95,7 @@ def main() -> int:
     parser.add_argument("inputs", nargs="+", type=Path)
     parser.add_argument("--json-out", type=Path)
     parser.add_argument("--latin-font", default="Arial")
-    parser.add_argument("--east-asian-font", default="Noto Sans CJK SC")
+    parser.add_argument("--east-asian-font", help="Required font when the slide contains CJK text")
     parser.add_argument("--fontconfig-file", type=Path)
     args = parser.parse_args()
     if args.fontconfig_file:
@@ -102,23 +103,41 @@ def main() -> int:
 
     images = [inspect_image(path) for path in args.inputs]
     tools = {
-        "python": command_version("python3", ["--version"]),
-        "node": command_version("node", ["--version"]),
+        "python": {
+            "command": sys.executable,
+            "path": sys.executable,
+            "available": True,
+            "version": sys.version.split()[0],
+        },
+        "node": command_version(
+            os.environ.get("RUNTIME_NODE") or os.environ.get("CODEX_PRIMARY_RUNTIME_NODE") or "node",
+            ["--version"],
+        ),
         "tesseract": command_version("tesseract", ["--version"]),
         "soffice": command_version("soffice", ["--version"]),
         "pdftoppm": command_version("pdftoppm", ["-v"]),
     }
-    runtime_modules = Path(
-        os.environ.get("CODEX_PRIMARY_RUNTIME_NODE_MODULES", "")
+    module_roots = [
+        Path(value).expanduser()
+        for key in ("CODEX_PRIMARY_RUNTIME_NODE_MODULES", "RUNTIME_NODE_MODULES")
+        if (value := os.environ.get(key))
+    ]
+    module_roots.append(Path(__file__).resolve().parent.parent / "node_modules")
+    artifact_package = next(
+        (
+            root / "@oai" / "artifact-tool" / "package.json"
+            for root in module_roots
+            if (root / "@oai" / "artifact-tool" / "package.json").is_file()
+        ),
+        None,
     )
-    artifact_package = runtime_modules / "@oai" / "artifact-tool" / "package.json"
     tools["artifact_tool"] = {
-        "available": artifact_package.exists(),
-        "path": str(artifact_package) if artifact_package.exists() else None,
+        "available": artifact_package is not None,
+        "path": str(artifact_package) if artifact_package else None,
     }
     fonts = {
         "latin": resolve_font(args.latin_font),
-        "east_asian": resolve_font(args.east_asian_font),
+        "east_asian": resolve_font(args.east_asian_font) if args.east_asian_font else None,
     }
     errors = []
     warnings = []
@@ -130,8 +149,11 @@ def main() -> int:
     langs = tesseract_languages()
     if not any(lang in langs for lang in ("chi_sim", "chi_tra")):
         warnings.append("chinese_ocr_unavailable_use_visual_transcription_and_review")
-    if not fonts["east_asian"].get("exact"):
-        errors.append("east_asian_font_not_available_exactly")
+    if args.east_asian_font:
+        if shutil.which("fc-match") and not fonts["east_asian"].get("exact"):
+            errors.append("east_asian_font_not_available_exactly")
+        elif not shutil.which("fc-match"):
+            warnings.append("fontconfig_unavailable_check_cjk_font_in_powerpoint")
 
     report = {
         "status": "passed" if not errors else "failed",

@@ -11,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from build_deck import initialize_artifact_workspace
+from build_deck import initialize_artifact_workspace, node_executable
 from qa_summary import summarize, write_failed_crops
 from scene_defaults import load_expanded
 
@@ -47,7 +47,7 @@ def render_deck(
     shutil.copy2(skill_dir / "render_pptx.mjs", render_tool)
     proc = subprocess.run(
         [
-            shutil.which("node") or "node",
+            node_executable(env),
             str(render_tool),
             str(pptx),
             str(render_dir),

@@ -107,6 +107,9 @@ def audit(pptx: Path, scene_path: Path) -> dict:
         "prohibited_full_slide_pictures": 0,
         "media_files": 0,
         "objects_outside_slide": 0,
+        "semantic_lines_with_expected_width": 0,
+        "integrated_arrow_ends": 0,
+        "detached_arrowheads": 0,
     }
     all_text: list[str] = []
     all_names: set[str] = set()
@@ -172,6 +175,57 @@ def audit(pptx: Path, scene_path: Path) -> dict:
                     namespaces=NS,
                 )
             )
+            shapes_by_name = {}
+            for shape in root.xpath(".//p:sp | .//p:cxnSp", namespaces=NS):
+                metadata = shape.find("p:nvSpPr/p:cNvPr", NS)
+                if metadata is None:
+                    metadata = shape.find("p:nvCxnSpPr/p:cNvPr", NS)
+                if metadata is not None and metadata.get("name"):
+                    shapes_by_name[metadata.get("name")] = shape
+            current_elements = (
+                scene_slides[slide_index].get("elements", [])
+                if slide_index < len(scene_slides)
+                else []
+            )
+            for element in current_elements:
+                is_line = element.get("type") == "native_line"
+                is_stroke_path = (
+                    element.get("type") == "native_path"
+                    and element.get("fill", "none") == "none"
+                )
+                if not (is_line or is_stroke_path):
+                    continue
+                element_id = str(element.get("id"))
+                shape = shapes_by_name.get(element_id)
+                if shape is None:
+                    continue  # The existing scene-object gate reports this.
+                stroke = shape.find("p:spPr/a:ln", NS)
+                width_pt = float((element.get("line") or {}).get("width_pt", 1))
+                expected_width = str(round(width_pt * 12700))
+                if stroke is None or stroke.get("w") != expected_width:
+                    errors.append(
+                        {"code": "line_width_mismatch", "message": f"{slide_name}: {element_id}"}
+                    )
+                else:
+                    counts["semantic_lines_with_expected_width"] += 1
+                if not is_line:
+                    continue
+                for field, tag in (("head", "tailEnd"), ("tail", "headEnd")):
+                    value = element.get(field)
+                    if not value or str(value).lower() == "none":
+                        continue
+                    end = stroke.find(f"a:{tag}", NS) if stroke is not None else None
+                    if end is None or end.get("type") in (None, "none"):
+                        errors.append(
+                            {"code": "arrowhead_not_integrated", "message": f"{slide_name}: {element_id}"}
+                        )
+                    else:
+                        counts["integrated_arrow_ends"] += 1
+                if f"{element_id}-head" in shapes_by_name:
+                    counts["detached_arrowheads"] += 1
+                    errors.append(
+                        {"code": "detached_arrowhead", "message": f"{slide_name}: {element_id}"}
+                    )
             frames = inspect_picture_frames(root, slide_width, slide_height)
             allowed_background_ids = {
                 str(element.get("id"))
