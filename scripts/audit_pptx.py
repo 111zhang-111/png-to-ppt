@@ -110,6 +110,7 @@ def audit(pptx: Path, scene_path: Path) -> dict:
         "semantic_lines_with_expected_width": 0,
         "integrated_arrow_ends": 0,
         "detached_arrowheads": 0,
+        "grouping_locks": 0,
     }
     all_text: list[str] = []
     all_names: set[str] = set()
@@ -151,6 +152,17 @@ def audit(pptx: Path, scene_path: Path) -> dict:
         scene_slides = scene.get("slides", [])
         for slide_index, slide_name in enumerate(slide_names):
             root = load_xml(archive, slide_name)
+            grouping_locks = root.xpath(
+                ".//a:spLocks[@noGrp='1' or @noGrp='true'] | "
+                ".//a:picLocks[@noGrp='1' or @noGrp='true'] | "
+                ".//a:cxnSpLocks[@noGrp='1' or @noGrp='true'] | "
+                ".//a:graphicFrameLocks[@noGrp='1' or @noGrp='true'] | "
+                ".//a:grpSpLocks[@noGrp='1' or @noGrp='true']",
+                namespaces=NS,
+            )
+            counts["grouping_locks"] += len(grouping_locks)
+            if grouping_locks:
+                errors.append({"code": "objects_locked_against_grouping", "message": f"{slide_name}: {len(grouping_locks)}"})
             counts["native_text_shapes"] += len(
                 root.xpath(".//p:sp[p:txBody]", namespaces=NS)
             )

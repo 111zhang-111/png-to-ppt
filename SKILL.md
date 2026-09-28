@@ -119,6 +119,19 @@ starting a reconstruction when it is not already obvious.
   shape may remain for a straight arrow line, and each reconstructed line or
   connector must retain its 1 pt stroke after grouping or resizing.
 
+## Grouping Compatibility
+
+- Native editable objects must be available for PowerPoint grouping. Artifact
+  Tool exports can set `a:spLocks noGrp="1"` even on ordinary shapes and text.
+- Run `scripts/unlock_pptx_grouping.py FINAL.pptx` after the last PPTX export.
+  The build pipeline performs this step automatically. Run it again after any
+  separate import/export finalizer, which can restore grouping locks.
+- The final structural audit must report `grouping_locks: 0`. An editable
+  textbox is not sufficient evidence that the object can be grouped.
+- Preserve individual objects. Pre-group modules only when the user requests
+  it; charts, tables, and placeholders may have PowerPoint grouping limits
+  unrelated to `noGrp` and require an explicit delivery limitation.
+
 ## Modes
 
 Use `economy` unless the user or current conversation state selects another
@@ -282,3 +295,4 @@ Fail delivery when:
 - a straight arrow is made from a separate shaft and arrowhead, its visible
   line is broken, or a reconstructed line or connector is not 1 pt without an
   explicit user override.
+- reconstructed objects retain a `noGrp` grouping lock in the delivered PPTX.

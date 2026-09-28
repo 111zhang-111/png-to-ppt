@@ -78,6 +78,7 @@ def summarize(report: dict) -> dict:
             "prohibited_full_slide_pictures"
         ),
         "objects_outside_slide": counts.get("objects_outside_slide"),
+        "grouping_locks": counts.get("grouping_locks"),
         "expected_text_coverage": audit.get("expected_text", {}).get("coverage"),
         "global_similarity": global_similarity,
         "failed_regions": failed_regions,

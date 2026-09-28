@@ -55,6 +55,16 @@ to that line, and sets semantic lines to 1 pt by default. `line.width_pt` is
 available only for an explicit user-requested override. The structural audit
 checks these properties on the final PPTX.
 
+The last build step also removes PowerPoint `noGrp` locks so native shapes,
+textboxes, and pictures can be selected and grouped. The audit rejects remaining
+grouping locks. For an older exported deck, run:
+
+```text
+python scripts/unlock_pptx_grouping.py INPUT.pptx --output OUTPUT_groupable.pptx
+```
+
+Run the unlock step again after any external exporter that rewrites the PPTX.
+
 This is an agent workflow, not a one-command image recognizer. Fidelity depends
 on the reviewed scene, source resolution, fonts, and visual repair. Different
 machines or models may need different manual corrections.

@@ -154,6 +154,12 @@ def main() -> int:
         cwd=run_dir,
         env=env,
     )
+    # Run after the last export; re-exporting with a renderer can restore noGrp.
+    run(
+        [sys.executable, str(skill_dir / "unlock_pptx_grouping.py"), str(output)],
+        cwd=run_dir,
+        env=env,
+    )
     print(output)
     return 0
 

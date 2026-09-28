@@ -47,6 +47,8 @@ raw OCR output into context; retain only uncertain regions.
 - Every scene element has a named PPT object.
 - The PPTX opens without repair.
 - Objects remain inside the slide.
+- Delivered editable shapes, text, and pictures have no active `noGrp` lock.
+  Check after the last export, including any separate finalizer.
 - Each straight arrow is one native line or connector with an attached line-end
   arrowhead; no separate arrowhead triangle remains.
 - Reconstructed lines and connectors, including `native_path` elements used
