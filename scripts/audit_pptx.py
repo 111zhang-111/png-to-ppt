@@ -220,8 +220,6 @@ def audit(pptx: Path, scene_path: Path) -> dict:
                     )
                 else:
                     counts["semantic_lines_with_expected_width"] += 1
-                if not is_line:
-                    continue
                 for field, tag in (("head", "tailEnd"), ("tail", "headEnd")):
                     value = element.get(field)
                     if not value or str(value).lower() == "none":

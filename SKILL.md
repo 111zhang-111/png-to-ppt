@@ -109,6 +109,9 @@ starting a reconstruction when it is not already obvious.
   connector object with an end-arrow setting**. Never draw the shaft and
   arrowhead as separate objects, even if they are grouped; grouping does not
   make their endpoints continuous.
+- For a multi-segment route, use one open `native_path` with all bend points
+  and `head: "triangle"` for an arrow at its endpoint. The path and its arrow
+  then remain one movable PowerPoint object.
 - Keep the arrowhead attached to the actual line endpoint. Check the final
   PowerPoint render for gaps, breaks, or an arrowhead pointing away from the
   connected line. When segments form a route, make their endpoints meet exactly.

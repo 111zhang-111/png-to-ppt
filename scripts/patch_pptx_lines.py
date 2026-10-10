@@ -76,9 +76,10 @@ def patch_slide(
             raise ValueError(f"slide {slide_number}: invalid line.width_pt on {element_id}")
         stroke.set("w", str(round(width_pt * 12700)))  # DrawingML EMU: 12700 per point.
         line_count += 1
-        if semantic_line:
-            # Scene bbox [x, y, dx, dy] defines the final endpoint at x+dx, y+dy.
-            # The compiler's line preset applies flips for negative deltas.
+        if semantic_line or stroke_path:
+            # A line's scene bbox defines its endpoint; a native path uses its
+            # final point. Native paths carry an entire route as one shape.
+            # DrawingML line ends keep the arrowhead attached to that shape.
             start = arrow_type(element.get("tail"))
             end = arrow_type(element.get("head"))
             add_line_end(stroke, "headEnd", start)

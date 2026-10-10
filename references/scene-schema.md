@@ -218,6 +218,11 @@ Only when the user specifies a different width, set `line.width_pt` to that
 point value. Do not use `line.width` to represent a semantic line's final
 width; it is normalized by the compiler.
 
+For a multi-segment connector, use one open `native_path` with its bend points
+in order. Set `head: "triangle"` to attach an arrow to the final point (or
+`tail: "triangle"` for the first point). The exported route remains one native
+PowerPoint object and moves as a unit.
+
 ## Baseboard Root
 
 Every slide must contain exactly one element with:
